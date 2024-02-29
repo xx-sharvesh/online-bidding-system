@@ -16,8 +16,8 @@ After creating the virtual environment, activate it and then use `pip` to instal
 # Activate the virtual environment
 source venv/bin/activate
 
-# Install Flask
-pip install Flask
+# Install streamlit
+pip install streamlit
 
 # Install Pandas
 pip install pandas
@@ -25,5 +25,5 @@ pip install pandas
 These commands will install Flask and Pandas within the virtual environment, ensuring that your project's dependencies are isolated from other Python installations on your system.
 --------------------------------------------------------------------------------------------------------------------------------------------------------------------
 To Run the Flask application
-flask run
+streamlit run app.py
 This command starts the Flask development server, and you can access the application in your web browser at http://localhost:5000.
