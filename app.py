@@ -1,74 +1,102 @@
-from flask import Flask, render_template, request, redirect, url_for
+import streamlit as st
 import pandas as pd
 
-app = Flask(__name__)
+# Function to store and retrieve items state
+@st.cache(allow_output_mutation=True)
+def get_items():
+    return []
 
-# Load Excel file
-excel_file = 'items.xlsx'
-try:
-    items_df = pd.read_excel(excel_file)
-except FileNotFoundError:
-    items_df = pd.DataFrame(columns=['Name', 'Base Price', 'Fixed Price'])
-    items_df.to_excel(excel_file, index=False)
+# Function to store and retrieve participants state
+@st.cache(allow_output_mutation=True)
+def get_participants():
+    return []
 
-# Load participants from Excel file
-participants_file = 'participants.xlsx'
-try:
-    participants_df = pd.read_excel(participants_file)
-except FileNotFoundError:
-    participants_df = pd.DataFrame(columns=['Name'])
-    participants_df.to_excel(participants_file, index=False)
+# Main function for adding items and participants
+def add_items_participants():
+    st.title("Add Items and Participants")
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        name = request.form['itemName']
-        base_price = float(request.form['basePrice'])
-        fixed_price = float(request.form['fixedPrice'])
+    # Add item
+    st.header("Add Item")
+    item_name = st.text_input("Item Name")
+    base_price = st.number_input("Base Price", min_value=0)
+    if st.button("Add Item"):
+        items = get_items()
+        items.append({"name": item_name, "base_price": base_price})
+        st.success("Item added successfully!")
 
-        # Update DataFrame
-        items_df.loc[len(items_df)] = [name, base_price, fixed_price]
-        items_df.to_excel(excel_file, index=False)  # Save to Excel file
+    # Display added items in a table
+    items = get_items()
+    if items:
+        st.header("Items Added")
+        item_data = {"Name": [item["name"] for item in items],
+                     "Base Price": [item["base_price"] for item in items]}
+        item_df = pd.DataFrame(item_data)
+        st.table(item_df)
 
-        return redirect(url_for('index'))
+    # Add participant
+    st.header("Add Participant")
+    participant_name = st.text_input("Participant Name")
+    if st.button("Add Participant"):
+        participants = get_participants()
+        participants.append(participant_name)
+        st.success("Participant added successfully!")
 
-    return render_template('index.html', items=items_df.values.tolist(), show_button=len(items_df) > 0)
+    # Display participants list
+    participants = get_participants()
+    if participants:
+        st.subheader("Participants")
+        for participant in participants:
+            st.write(participant)
 
-@app.route('/start-auction', methods=['GET', 'POST'])
-def start_auction():
-    if request.method == 'POST':
-        num_participants = int(request.form['numParticipants'])
-        return redirect(url_for('display_items', num_participants=num_participants))
+# Main function for auction bidding
+def auction_bidding():
+    st.title("Auction Bidding")
 
-    return render_template('start_auction.html')
+    # Get items and participants
+    items = get_items()
+    participants = get_participants()
 
-@app.route('/add-participant', methods=['POST'])
-def add_participant():
-    name = request.form['participantName']
-    participants_df.loc[len(participants_df)] = [name]
-    participants_df.to_excel(participants_file, index=False)  # Save to Excel file
-    return redirect(url_for('start_auction'))
+    # Select item for bidding
+    st.header("Select Item for Bidding")
+    selected_item = st.selectbox("Choose Item", [item["name"] for item in items])
 
-@app.route('/display-items/<int:num_participants>', methods=['GET', 'POST'])
-def display_items(num_participants):
-    # Retrieve items
-    items = items_df.values.tolist()
-    num_items = len(items)
-    
-    # Example participant names
-    participant_names = ["Participant 1", "Participant 2", "Participant 3"]  # Replace with your actual participant names
+    # Display selected item details
+    selected_item_details = [item for item in items if item["name"] == selected_item][0]
+    st.subheader("Selected Item Details")
+    st.write("Name:", selected_item_details["name"])
+    st.write("Base Price:", selected_item_details["base_price"])
 
-    # Example current item ID
-    current_item_id = 1
+    # Initialize bidding price as the base price
+    bidding_price = st.session_state.get("bidding_price", selected_item_details["base_price"])
 
-    return render_template('display_items.html', items=items, num_participants=num_participants, num_items=num_items, participant_names=participant_names, currentItemId=current_item_id)
+    # Display initial bidding price
+    st.subheader("Bidding Price")
+    st.write(bidding_price)
 
-    if request.method == 'POST':
-        # Handle next button click
-        # Logic to toggle to the next item
-        pass
+    # Display buttons for participants to place bids
+    st.subheader("Place Bid")
 
-    return render_template('display_items.html', items=items, num_participants=num_participants)
+    # Display buttons for participants to place bids
+    for participant in participants:
+        if st.button(f"Bid by {participant} (+100)", key=participant):
+            bidding_price += 100
+            st.session_state.bidding_price = bidding_price
+            st.success(f"Bid placed by {participant} successfully!")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    # Sell item
+    if st.button("Sold"):
+        winning_participant = st.selectbox("Select Winning Participant", participants)
+        st.success(f"Item sold to {winning_participant}!")
+
+# Multi-page app
+def main():
+    menu = ["Add Items and Participants", "Auction Bidding"]
+    choice = st.sidebar.selectbox("Menu", menu)
+
+    if choice == "Add Items and Participants":
+        add_items_participants()
+    elif choice == "Auction Bidding":
+        auction_bidding()
+
+if __name__ == "__main__":
+    main()
