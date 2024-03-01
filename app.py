@@ -58,35 +58,51 @@ def auction_bidding():
 
     # Select item for bidding
     st.header("Select Item for Bidding")
-    selected_item = st.selectbox("Choose Item", [item["name"] for item in items])
+    selected_item_name = st.selectbox("Choose Item", [item["name"] for item in items])
+
+    # Fetch selected item details
+    selected_item_details = next((item for item in items if item["name"] == selected_item_name), None)
+    if selected_item_details is None:
+        st.error("No item selected!")
+        return
 
     # Display selected item details
-    selected_item_details = [item for item in items if item["name"] == selected_item][0]
     st.subheader("Selected Item Details")
     st.write("Name:", selected_item_details["name"])
     st.write("Base Price:", selected_item_details["base_price"])
 
-    # Initialize bidding price as the base price
-    bidding_price = st.session_state.get("bidding_price", selected_item_details["base_price"])
+    # Initialize bidding price as the base price of the selected item
+    bidding_price = st.session_state.get(selected_item_name, selected_item_details["base_price"])
 
     # Display initial bidding price
     st.subheader("Bidding Price")
     st.write(bidding_price)
 
+    # Display form to input bid amount
+    bid_amount = st.number_input("Bid Amount", min_value=0, value=100)
+
     # Display buttons for participants to place bids
     st.subheader("Place Bid")
 
+    last_bidder = st.session_state.get("last_bidder")
+
     # Display buttons for participants to place bids
     for participant in participants:
-        if st.button(f"Bid by {participant} (+100)", key=participant):
-            bidding_price += 100
-            st.session_state.bidding_price = bidding_price
+        if st.button(f"Bid by {participant}", key=participant):
+            last_bidder = participant
+            st.session_state.last_bidder = last_bidder
+            bidding_price += bid_amount
+            st.session_state[selected_item_name] = bidding_price
             st.success(f"Bid placed by {participant} successfully!")
 
     # Sell item
     if st.button("Sold"):
-        winning_participant = st.selectbox("Select Winning Participant", participants)
+        winning_participant = st.session_state.last_bidder
         st.success(f"Item sold to {winning_participant}!")
+        # Remove sold item from the list
+        items[:] = [item for item in items if item["name"] != selected_item_name]
+        # Reset bidding price to base price of the current item
+        st.session_state[selected_item_name] = selected_item_details["base_price"]
 
 # Multi-page app
 def main():
